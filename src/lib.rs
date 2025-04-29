@@ -84,8 +84,8 @@ impl SyslogMessageData {
         let mut message = Builder::new_default();
         // Create a new SyslogMessage
         let mut syslog_message = message.init_root::<syslog_message::Builder>();
-        // Convert DateTime<Utc> to timestamp (milliseconds since epoch)
-        let timestamp_millis = self.timestamp.timestamp_millis() as u64;
+        // Use the app timestamp, them switches are not reliable
+        let timestamp_millis = chrono::Utc::now().timestamp_millis() as u64;
         syslog_message.set_timestamp(timestamp_millis);
         // Set the source address as a string
         syslog_message.set_source(&self.source.to_string());
