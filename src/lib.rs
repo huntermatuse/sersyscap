@@ -117,9 +117,11 @@ impl SyslogMessageData {
 /// # Examples
 ///
 /// ```
-/// use std::net::Ipv4Addr;
+/// use std::net::{IpAddr, Ipv4Addr};
 /// use chrono::Utc;
-///
+/// use sersyscap::{SyslogMessageData, serialize_message};
+/// 
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let message = SyslogMessageData {
 ///     timestamp: Utc::now(),
 ///     source: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
@@ -129,6 +131,8 @@ impl SyslogMessageData {
 /// };
 ///
 /// let bytes = serialize_message(&message)?;
+/// # Ok(())
+/// # }
 /// ```
 pub fn serialize_message(message_data: &SyslogMessageData) -> Result<Vec<u8>> {
     message_data.to_capnp_message()
@@ -155,13 +159,27 @@ pub fn serialize_message(message_data: &SyslogMessageData) -> Result<Vec<u8>> {
 /// # Examples
 ///
 /// ```
-/// // Assuming we have some serialized data
-/// let bytes: Vec<u8> = get_serialized_data();
+/// use sersyscap::{SyslogMessageData, deserialize_message, serialize_message};
+/// use std::net::{IpAddr, Ipv4Addr};
+/// use chrono::Utc;
 ///
-/// match deserialize_message(&bytes) {
-///     Ok(message) => println!("Received message: {:?}", message),
-///     Err(e) => eprintln!("Failed to deserialize: {}", e),
-/// }
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// // First create and serialize a message
+/// let original = SyslogMessageData {
+///     timestamp: Utc::now(),
+///     source: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+///     facility: 0,
+///     severity: 0,
+///     raw_message: "Test message".to_string(),
+/// };
+///
+/// let bytes = serialize_message(&original)?;
+///
+/// // Now deserialize it
+/// let deserialized = deserialize_message(&bytes)?;
+/// println!("Received message: {:?}", deserialized);
+/// # Ok(())
+/// # }
 /// ```
 pub fn deserialize_message(bytes: &[u8]) -> Result<SyslogMessageData> {
     let mut slice = bytes;
@@ -354,6 +372,39 @@ mod tests {
         println!("Processed 1000 messages in {:?}", duration);
         println!("Average message size: {} bytes", total_size / 1000);
         println!("Average time per message: {:?}", duration / 1000);
+
+        // No real assertion, just informational
+        Ok(())
+    }
+
+    #[test]
+    fn test_roundtrip_performance_1_000_000() -> Result<()> {
+        use std::time::Instant;
+
+        // Create 1_000_000 messages and measure serialization/deserialization time
+        let mut total_size = 0;
+        let start = Instant::now();
+
+        for i in 0..1_000_000 {
+            let original = SyslogMessageData {
+                timestamp: Utc::now(),
+                source: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
+                facility: 23,
+                severity: 6,
+                raw_message: format!("Test message number {}", i),
+            };
+
+            let serialized = serialize_message(&original)?;
+            total_size += serialized.len();
+
+            let _deserialized = deserialize_message(&serialized)?;
+        }
+
+        let duration = start.elapsed();
+
+        println!("Processed 1m messages in {:?}", duration);
+        println!("Average message size: {} bytes", total_size / 1_000_000);
+        println!("Average time per message: {:?}", duration / 1_000_000);
 
         // No real assertion, just informational
         Ok(())
