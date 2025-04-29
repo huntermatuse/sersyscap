@@ -1,0 +1,14 @@
+[package]
+name = "sersyscap"
+version = "1.0.0"
+edition = "2024"
+authors = ["hunter matuse"]
+
+[dependencies]
+anyhow = "1.0.98"
+capnp = "0.21.0"
+chrono = { version = "0.4.40", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+
+[build-dependencies]
+capnpc = "0.21.0"
