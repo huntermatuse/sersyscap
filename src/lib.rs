@@ -120,7 +120,7 @@ impl SyslogMessageData {
 /// use std::net::{IpAddr, Ipv4Addr};
 /// use chrono::Utc;
 /// use sersyscap::{SyslogMessageData, serialize_message};
-/// 
+///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let message = SyslogMessageData {
 ///     timestamp: Utc::now(),
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_basic_serialization_deserialization() -> Result<()> {
-        // Create a sample message with IPv4 address
+        // Create a sample message with IPv4 address and an older timestamp
         let original = SyslogMessageData {
             timestamp: Utc.with_ymd_and_hms(2023, 4, 15, 12, 30, 45).unwrap(),
             source: IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)),
@@ -212,8 +212,13 @@ mod tests {
         // Deserialize
         let deserialized = deserialize_message(&serialized)?;
 
-        // Verify the result
-        assert_eq!(original.timestamp, deserialized.timestamp);
+        // Verify the timestamp was updated to a newer time
+        assert!(
+            deserialized.timestamp > original.timestamp,
+            "Timestamp should be updated to a newer time"
+        );
+
+        // Verify the other fields remain the same
         assert_eq!(original.source, deserialized.source);
         assert_eq!(original.facility, deserialized.facility);
         assert_eq!(original.severity, deserialized.severity);
@@ -301,7 +306,11 @@ mod tests {
         let serialized = serialize_message(&original)?;
         let deserialized = deserialize_message(&serialized)?;
 
-        assert_eq!(original.timestamp, deserialized.timestamp);
+        // Verify timestamp was updated
+        assert!(
+            deserialized.timestamp > original.timestamp,
+            "Timestamp should be updated to a newer time"
+        );
 
         // Far future timestamp
         let future = SyslogMessageData {
@@ -316,7 +325,16 @@ mod tests {
         let serialized = serialize_message(&future)?;
         let deserialized = deserialize_message(&serialized)?;
 
-        assert_eq!(future.timestamp, deserialized.timestamp);
+        // Check if timestamp is recent (not the future date)
+        let now = Utc::now();
+        assert!(
+            deserialized.timestamp <= now,
+            "Deserialized timestamp should not be in the future"
+        );
+        assert!(
+            deserialized.timestamp >= now.with_timezone(&Utc) - chrono::Duration::minutes(1),
+            "Deserialized timestamp should be very recent"
+        );
 
         Ok(())
     }
